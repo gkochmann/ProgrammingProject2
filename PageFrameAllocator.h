@@ -14,10 +14,11 @@ using namespace std;
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <MMU.h>
 
 class PageFrameAllocator {
 public:
-    PageFrameAllocator(int numPageFrames);
+    PageFrameAllocator(mem::MMU mem);
     ~PageFrameAllocator() {
         // implement this bitch
     };
@@ -43,7 +44,7 @@ private:
     uint32_t pageFramesTotal; //A count of the total number of page frames in memory (memory size divided by 0x1000)
     uint32_t pageFramesFree; //The current number of free page frames
     uint32_t freeListHead; //The page frame number of the first page frame in the free list (0xFFFFFFFF if list empty)
-
+    mem::MMU memory(256);
 };
 
 #endif /* PAGEFRAMEALLOCATOR_H */

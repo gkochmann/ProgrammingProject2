@@ -8,10 +8,8 @@
 #include <vector>
 #include "PageFrameAllocator.h"
 
-PageFrameAllocator::PageFrameAllocator(int numPageFrames) {
-    int totalSize = numPageFrames * 0x1000;
-    memory.resize(totalSize, 0); //Resizes memory
-    
+PageFrameAllocator::PageFrameAllocator(mem::MMU mem) { 
+    memory = *mem;
     freeListHead = 0xFFFFFFFF; // The page frame number of the first page frame in the free list (0xFFFFFFFF if list empty)
     uint32_t index, v32;
     memcpy(&memory[0], &freeListHead, sizeof(uint32_t)); // Default so that if list is empty, first 4 bytes have value of 0xFFFFFFFF
