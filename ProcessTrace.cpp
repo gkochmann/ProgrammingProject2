@@ -14,15 +14,14 @@
    * @param executionFile     Name of file to be opened
    * @throws                  Throws exception on error opening file
    */
-ProcessTrace::ProcessTrace(string executionFile, mem::MMU mem, PageFrameAllocator allocator) {
+ProcessTrace::ProcessTrace(string executionFile, mem::MMU &mem, PageFrameAllocator &allocator)
+: memory(mem) {
     // Open execution trace file
     inFile.open(executionFile);
     if (inFile.fail()) { // Exit program if it can't open file
         cerr << "ERROR: Cannot open text file: " << executionFile << endl;
         exit(2);
     }
-    
-    *memory = mem;
 }
 
   /**

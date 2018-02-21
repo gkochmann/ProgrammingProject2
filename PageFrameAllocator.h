@@ -18,7 +18,7 @@ using namespace std;
 
 class PageFrameAllocator {
 public:
-    PageFrameAllocator(mem::MMU mem);
+    PageFrameAllocator(mem::MMU &mem);
     ~PageFrameAllocator() {
         // implement this bitch
     };
@@ -40,11 +40,11 @@ public:
     void setPageFramesFree(uint32_t newFrames) {pageFramesFree = newFrames;}
     
 private:
-    std::vector<uint8_t> memory; //Byte array that contains page frames to be managed
+    std::vector<uint8_t> pageFrames; //Byte array that contains page frames to be managed
     uint32_t pageFramesTotal; //A count of the total number of page frames in memory (memory size divided by 0x1000)
     uint32_t pageFramesFree; //The current number of free page frames
     uint32_t freeListHead; //The page frame number of the first page frame in the free list (0xFFFFFFFF if list empty)
-    mem::MMU memory(256);
+    mem::MMU &memory;
 };
 
 #endif /* PAGEFRAMEALLOCATOR_H */

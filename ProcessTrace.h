@@ -21,7 +21,7 @@ using namespace std;
 
 class ProcessTrace {
 public:
-    ProcessTrace(string fileName, mem::MMU mem, PageFrameAllocator allocator);
+    ProcessTrace(string fileName, mem::MMU &mem, PageFrameAllocator &allocator);
     ~ProcessTrace() {
         inFile.close(); // Destructor just closes trace file
     };
@@ -32,7 +32,7 @@ public:
     void Execute();
 private:
     fstream inFile; // private fstream to read file and to be closed in destructor
-    mem::MMU memory(256);
+    mem::MMU &memory;
 };
 
 #endif /* PROCESSTRACE_H */
