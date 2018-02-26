@@ -9,50 +9,41 @@
 #include "PageFrameAllocator.h"
 
 PageFrameAllocator::PageFrameAllocator(mem::MMU &mem)
-: memory(mem) { 
-    freeListHead = 0xFFFFFFFF; // The page frame number of the first page frame in the free list (0xFFFFFFFF if list empty)
-    uint32_t index, v32;
-    memcpy(&pageFrames[0], &freeListHead, sizeof(uint32_t)); // Default so that if list is empty, first 4 bytes have value of 0xFFFFFFFF
-    for (int i = 0; i < memory.get_frame_count(); i++) { // Build free list
-        freeListHead = 0;
-        index = i*0x1000;
-        v32 = i+1;
-        if (i == memory.get_frame_count()-1) {
-            v32 = 0xFFFFFFFF; // Last element of the list so 0xFFFFFFFF
-        }
-        memcpy(&pageFrames[index], &v32, sizeof(uint32_t));
+: memory(mem),
+  pageFramesFree(memory.get_frame_count()),
+  pageFramesTotal(memory.get_frame_count()),
+  freeListHead(0) {
+    for (uint32_t i = 0; i < memory.get_frame_count(); i++) {
+        uint8_t v8 = i+1;
+        if (i == memory.get_frame_count()-1)
+            v8 = 0xFFFFFFFF;
+        memory.put_byte(i*0x1000, &v8); // next is a uint8_t because the address of a uint32_t cannot be passed in for some reason
     }
-    
-    pageFramesFree = memory.get_frame_count();  
-    pageFramesTotal = memory.get_frame_count();
 }
 
-bool PageFrameAllocator::Allocate(uint32_t count, std::vector<uint32_t> &page_frames) {
-        if (getPageFramesFree() >= count){ 
-            for(int i = count; i > 0; i--){
-                memory.put_byte(i * 0x1000);
-                //page_frames.push_back(pageFrames[i * 0x1000]); //Add page frame to the allocated vector
-                //pageFrames.pop_back();//[i * 0x1000]; //Erasing head
-                updateFreeListHead(); //Updating head
-                setPageFramesFree(pageFramesFree - 1); //Removing 1 free page frame
-            }
-        } else {
-            return false; //Not enough frames free so nothing allocated
-        } 
-        
-    return true;
-}
-
-void PageFrameAllocator::updateFreeListHead() {
-    freeListHead -= 0x1000;
-}
-
-bool PageFrameAllocator::Deallocate(uint32_t count, std::vector<uint32_t> &page_frames) {
-    if (count <= page_frames.size()) {
+bool PageFrameAllocator::Allocate(uint32_t count, mem::MMU &pageFrames) {
+    if (getPageFramesFree() >= count) {
         for (int i = 0; i < count; i++) {
-            pageFrames.push_back(page_frames[i]);          
-            page_frames.pop_back();
-            setPageFramesFree(pageFramesFree + 1); //Adding 1 free page frame
+            pageFrames.put_byte(pageFrames.get_frame_count()+i, &freeListHead);
+            freeListHead -= 0x1000;
+            pageFramesFree--;
+        }
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+bool PageFrameAllocator::Deallocate(uint32_t count, mem::MMU &pageFrames) {
+    if (count <= pageFrames.get_frame_count()) { // If there is enough to deallocate...
+        for (int i = 0; i < count; i++) {
+            // Return next frame to head of free list
+            uint8_t frame;
+            pageFrames.get_byte(&frame, pageFrames.get_frame_count());
+            freeListHead += 0x1000;
+            freeListHead = frame;
+            pageFramesFree++;
         }
         return true;
     } else {
