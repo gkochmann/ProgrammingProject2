@@ -28,8 +28,8 @@ public:
     PageFrameAllocator& operator=(const PageFrameAllocator& orig) = delete;
     PageFrameAllocator& operator=(PageFrameAllocator&& orig) = delete;
     
-    bool Allocate(uint32_t count, std::vector<uint32_t> &page_frames);
-    bool Deallocate(uint32_t count, std::vector<uint32_t> &page_frames);
+    bool Allocate(uint32_t count, mem::MMU &pageFrames);
+    bool Deallocate(uint32_t count, mem::MMU &pageFrames);
     void updateFreeListHead();
     
     //Getters
@@ -40,11 +40,10 @@ public:
     void setPageFramesFree(uint32_t newFrames) {pageFramesFree = newFrames;}
     
 private:
-    std::vector<uint8_t> pageFrames; //Byte array that contains page frames to be managed
-    uint32_t pageFramesTotal; //A count of the total number of page frames in memory (memory size divided by 0x1000)
-    uint32_t pageFramesFree; //The current number of free page frames
-    uint32_t freeListHead; //The page frame number of the first page frame in the free list (0xFFFFFFFF if list empty)
-    mem::MMU &memory;
+    uint8_t pageFramesTotal; //A count of the total number of page frames in memory (memory size divided by 0x1000)
+    uint8_t pageFramesFree; //The current number of free page frames
+    uint8_t freeListHead; //The page frame number of the first page frame in the free list (0xFFFFFFFF if list empty)
+    mem::MMU &memory; // New PagesFrames
 };
 
 #endif /* PAGEFRAMEALLOCATOR_H */
