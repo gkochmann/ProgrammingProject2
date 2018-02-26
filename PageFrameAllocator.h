@@ -44,6 +44,7 @@ private:
     uint8_t pageFramesFree; //The current number of free page frames
     uint8_t freeListHead; //The page frame number of the first page frame in the free list (0xFFFFFFFF if list empty)
     mem::MMU &memory; // New PagesFrames
+    static const uint32_t EndList = 0xFFFFFFFF;
 };
 
 #endif /* PAGEFRAMEALLOCATOR_H */
