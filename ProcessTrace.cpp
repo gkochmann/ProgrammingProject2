@@ -25,6 +25,7 @@ ProcessTrace::ProcessTrace(string executionFile, mem::MMU &mem, PageFrameAllocat
     // Set up first level page table
     allocator.Allocate(256, mem); //????
     // Set up PMCB. Pointing to beginning of page table
+    //mem.set_PMCB();
 }
 
   /**
@@ -46,12 +47,13 @@ void ProcessTrace::Execute() {
             std::istringstream iss(tempLine);
             while (iss >> tempWord) { // Look at the first word of the line
                 if (tempWord == "alloc") {
-                    uint32_t vaddr, size;
+                    uint32_t vaddr, size, paddr;
                     iss >> std::hex >> vaddr;
                     iss >> std::hex >> size;
                     numPages = size;
                     // allocate memory somehow
-                    memory.put_bytes(vaddr, size, 0); // New allocated memory is initialized to 0
+                    memory.ToPhysical(vaddr, paddr, true);
+                    memory.put_bytes(paddr, size, 0); // New allocated memory is initialized to 0
                 } else if (tempWord == "compare") {
                     uint32_t addr, expected_values;
                     iss >> std::hex >> addr;
@@ -111,7 +113,16 @@ void ProcessTrace::Execute() {
                     }
                     if (i % 16 != 0) // Only prints another line after the dump if it doesn't end at 16
                         cout << endl;
-                } else {
+                } else if (tempWord == "writable") {
+                    uint32_t vaddr, size, status;
+                    iss >> std::hex >> vaddr;
+                    iss >> std::hex >> size;
+                    iss >> std::hex >> status;
+                    if (status == 0) {
+                        
+                    } else {
+                        
+                    }
                 }
             }
         }
