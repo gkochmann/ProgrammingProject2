@@ -122,9 +122,13 @@ void ProcessTrace::Execute() {
                         iss >> std::hex >> size;
                         iss >> std::hex >> status;
                         if (status == 0) {
-
+                            for (int i = 0; i < size; i++) {
+                                // Writable bit in the 2nd level page table should be cleared for all Present pages in the range
+                            }
                         } else {
-
+                            for (int i = 0; i < size; i++) {
+                                // Writable bit in the 2nd level page table should be set for all Present pages in the range
+                            }
                         }
                     }
                 } catch (mem::PageFaultException e1) {
