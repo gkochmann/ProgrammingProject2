@@ -14,12 +14,12 @@ PageFrameAllocator::PageFrameAllocator(mem::MMU &mem)
   pageFramesFree(memory.get_frame_count()),
   pageFramesTotal(memory.get_frame_count()),
   freeListHead(0) {
-    for (uint32_t i = 0; i < memory.get_frame_count(); i++) {
+    for (uint32_t i = 0; i < memory.get_frame_count()-1; ++i) {
         uint8_t v8 = i+1;
-        if (i == memory.get_frame_count()-1)
-            v8 = 0xFFFFFFFF;
         memory.put_byte(i*0x1000, &v8); // next is a uint8_t because the address of a uint32_t cannot be passed in for some reason
     }
+    uint8_t endOfList = EndList;
+    memory.put_byte((memory.get_frame_count()-1)*0x1000, &endOfList); // potential error: since they are uint8_t, the last pointer has a value of 0xFF, same as the pointer before it,  so it cannot be distinguished
 }
 
 bool PageFrameAllocator::Allocate(uint32_t count, mem::MMU &pageFrames) {
