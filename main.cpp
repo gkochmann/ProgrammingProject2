@@ -1,6 +1,6 @@
 /* 
  * File:   main.cpp
- * Author: grant and max
+ * Author: Grant Kochmann and Maxwell Evans
  *
  * Created on February 19, 2018, 2:24 PM
  */
@@ -13,9 +13,6 @@
 
 using namespace std;
 
-/*
- * 
- */
 int main(int argc, char** argv) {
     if (argc != 2) {
         cerr << "File name not specified." << endl;
@@ -51,11 +48,7 @@ int main(int argc, char** argv) {
      ProcessTrace:
         Constructor:
             Set up first level page table.
-            Set up PMCB. Pointing to begining of page table
-      
-      
-      
-     
+            Set up PMCB. Pointing to beginning of page table
      */
     return 0;
 }
