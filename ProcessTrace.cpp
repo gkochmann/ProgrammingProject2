@@ -22,6 +22,9 @@ ProcessTrace::ProcessTrace(string executionFile, mem::MMU &mem, PageFrameAllocat
         cerr << "ERROR: Cannot open text file: " << executionFile << endl;
         exit(2);
     }
+    // Set up first level page table
+    allocator.Allocate(256, mem); //????
+    // Set up PMCB. Pointing to beginning of page table
 }
 
   /**
@@ -35,36 +38,33 @@ void ProcessTrace::Execute() {
     // execute the commands in the trace file, using the vector as the memory referenced by the commands
     string tempLine, tempWord;
     double tempDouble, numPages;
-    getline(inFile, tempLine);
     std::istringstream iss(tempLine);
-    
-    //iss >> tempWord; // First line of text file is always alloc, so do before while-loop
-    //iss >> tempDouble;
-    //numPages = tempDouble/1000;
-    //numPages = ceil(numPages); // Rounds to the nearest 0x1000 and then is divided by 0x100 to get number of pages
-    //mem::MMU mem(numPages); // Uses MMU.h file to create MMU object initialized with number of pages, which is the the space allocated divided by 0x1000
-    //cout << tempWord << " " << tempDouble << endl;
-
+    int lineNum = 1;
     while (getline(inFile, tempLine)) { // Go through line by line
+        cout << lineNum << ":" << tempLine << endl;
         if (tempLine.at(0) != '#') {
-            cout << tempLine << endl;
             std::istringstream iss(tempLine);
             while (iss >> tempWord) { // Look at the first word of the line
                 if (tempWord == "alloc") {
-                    cout << "This shouldn't happen!" << endl;
+                    uint32_t vaddr, size;
+                    iss >> std::hex >> vaddr;
+                    iss >> std::hex >> size;
+                    numPages = size;
+                    // allocate memory somehow
+                    memory.put_bytes(vaddr, size, 0); // New allocated memory is initialized to 0
                 } else if (tempWord == "compare") {
-                    unsigned int addr, val;
+                    uint32_t addr, expected_values;
                     iss >> std::hex >> addr;
-                    while (iss >> val) { // Goes through each expected value in the line
+                    while (iss >> expected_values) { // Goes through each expected value in the line
                         uint8_t data[1]; // Create a temp array of size 1 and store byte in it, and then is compared one by one
                         memory.get_byte(data, addr);
-                        if (data[0] != val) {
-                            cout << "compare error at address " << std::hex << addr << ", expected " << std::hex << val << ", actual " << std::hex << unsigned(data[0]) << endl;
+                        if (data[0] != expected_values) {
+                            cout << "compare error at address " << std::hex << addr << ", expected " << std::hex << expected_values << ", actual " << std::hex << unsigned(data[0]) << endl;
                         }
                         addr++;
                     }
                 } else if (tempWord == "put") {
-                    unsigned int addr, val;
+                    uint32_t addr, val;
                     uint8_t data[1];
                     iss >> std::hex >> addr;
                     while (iss >> val) {
@@ -73,7 +73,7 @@ void ProcessTrace::Execute() {
                         addr++;
                     }
                 } else if (tempWord == "fill") {
-                    unsigned int addr, count, val;
+                    uint32_t addr, count, val;
                     iss >> std::hex >> addr; // First three values are the address, the amount of numbers to put, and the value to be put in
                     iss >> std::hex >> count;
                     iss >> std::hex >> val;
@@ -84,7 +84,7 @@ void ProcessTrace::Execute() {
                         addr++;
                     }
                 } else if (tempWord == "copy") {
-                    unsigned int dest_addr, src_addr, count;
+                    uint32_t dest_addr, src_addr, count;
                     iss >> std::hex >> dest_addr; // First three values are the destination address, the source address, and the amount of numbers to copy
                     iss >> std::hex >> src_addr;
                     iss >> std::hex >> count;
@@ -96,7 +96,7 @@ void ProcessTrace::Execute() {
                         dest_addr++;
                     }
                 } else if (tempWord == "dump") {
-                    unsigned int addr, count;
+                    uint32_t addr, count;
                     iss >> std::hex >> addr; // First two values are the address and the amount to dump
                     iss >> std::hex >> count;
                     cout << addr << endl;
@@ -112,11 +112,10 @@ void ProcessTrace::Execute() {
                     if (i % 16 != 0) // Only prints another line after the dump if it doesn't end at 16
                         cout << endl;
                 } else {
-                    cerr << "Invalid file type - cannot execute trace file" << endl;
-                    exit(2);
                 }
             }
         }
+        lineNum++;
     }
 }
 
