@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     
+    // Gets segmentation fault about half the time
     mem::MMU mem(256);
     PageFrameAllocator allocator(mem);
     ProcessTrace process(fileName, mem, allocator);
