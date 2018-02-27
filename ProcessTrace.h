@@ -33,6 +33,7 @@ public:
 private:
     fstream inFile; // private fstream to read file and to be closed in destructor
     mem::MMU &memory;
+    PageFrameAllocator &allocatr;
 };
 
 #endif /* PROCESSTRACE_H */
