@@ -15,7 +15,8 @@
    * @throws                  Throws exception on error opening file
    */
 ProcessTrace::ProcessTrace(string executionFile, mem::MMU &mem, PageFrameAllocator &allocator)
-: memory(mem) {
+: memory(mem),
+    allocatr(allocator) {
     // Open execution trace file
     inFile.open(executionFile);
     if (inFile.fail()) { // Exit program if it can't open file
@@ -23,15 +24,23 @@ ProcessTrace::ProcessTrace(string executionFile, mem::MMU &mem, PageFrameAllocat
         exit(2);
     }
     // Set up first level page table
-    allocator.Allocate(256, memory); //????
+    vector<uint32_t> pageFrames(256);
+    for (int i = 0; i < pageFrames.size(); i++)
+        pageFrames[i] = 0;
+    
     // Set up PMCB. Pointing to beginning of page table
-    //mem.set_PMCB();
+    mem::PMCB tempPMCB;
+    memory.get_PMCB(tempPMCB);
+    tempPMCB.vm_enable = false;
+    allocatr.Allocate(0x1000, pageFrames);
+    tempPMCB.next_vaddress = pageFrames[0];
+    memory.set_PMCB(tempPMCB);
 }
 
   /**
    * Execute - creates empty array of type uint8_t vector, reads the input trace file and acts on commands from the file
    * Commands include alloc, compare, put, fill, copy, and dump
-   * As of February 5th, 2018, now uses MMU object (from MMU.h) instead of a vector
+   * As of February 26th 2018, now uses MMU memory instead of a vector
    * 
    * @throws Throws exception if the file type is invalid (as in it doesn't use one of the six commands on one of the lines)
    */
@@ -49,21 +58,20 @@ void ProcessTrace::Execute() {
                 uint32_t address;
                 try { // try catch to find exceptions
                     if (tempWord == "alloc") {
-                        uint32_t vaddr, size, paddr;
+                        uint32_t vaddr, size;
                         iss >> std::hex >> vaddr;
                         iss >> std::hex >> size;
                         
-                        // allocate memory somehow
-                        mem::MMU mem(size); // Create next-level page table
-                        PageFrameAllocator newAllocation(mem);
-                        newAllocation.Allocate(size, mem);
-                        
+                        // Create next-level page table
+                        mem::PageTable pageTableL1; // 1st level page table
+                        mem::Addr l1Offset = (vaddr >> (mem::kPageSizeBits + mem::kPageTableSizeBits)) & mem::kPageTableIndexMask;
                         mem::PMCB testPMCB;
                         memory.get_PMCB(testPMCB);
                         testPMCB.vm_enable = false;
-                        memory.ToPhysical(vaddr, paddr, true); // pages marked writable
-                        // Sometimes PhysicalMemoryBoundsException, sometimes Segmentation Fault
-                        mem.put_bytes(vaddr, size, 0); // New allocated memory is initialized to 0
+                        memory.set_PMCB(testPMCB);
+                        //vm.put_bytes(mem::kPageTableBase, kPageTableSizeBytes, reinterpret_cast<uint8_t*> (&page_table_l1)); // write L1 page table
+                        //memory.ToPhysical(vaddr, paddr, true); // pages marked writable
+                        memory.put_bytes(vaddr, size, 0); // New allocated memory is initialized to 0
                     } else if (tempWord == "compare") {
                         uint32_t addr, expected_values;
                         addr = address;
@@ -130,12 +138,15 @@ void ProcessTrace::Execute() {
                         iss >> std::hex >> status;
                         for (int i = 0; i < size; i++) {
                             // Writable bit in the 2nd level page table should be cleared for all Present pages in the range
-                            mem::MMU mem(size);
                             mem::Addr paddr;
-                            if (status == 0)
-                                mem.ToPhysical(vaddr, paddr, false);
-                            else // status == 1
-                                mem.ToPhysical(vaddr, paddr, true);
+                            if (status == 0) {
+                                mem::PageTable pageTableL2;
+                                pageTableL2[mem::kPageOffsetMask] = 0x1000*mem::kPageSize | mem::kPTE_PresentMask | mem::kPTE_WritableMask;
+                                memory.put_bytes(0x1000*mem::kPageSize, mem::kPageTableSizeBytes, reinterpret_cast<uint8_t*> (&pageTableL2)); // write L2 page table
+                                memory.ToPhysical(vaddr, paddr, true); // pages marked writable
+                            } else { // status == 1
+                                memory.ToPhysical(vaddr, paddr, false);
+                            }
                         }
                     }
                 } catch (mem::PageFaultException e1) {
