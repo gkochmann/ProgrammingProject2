@@ -23,7 +23,7 @@ ProcessTrace::ProcessTrace(string executionFile, mem::MMU &mem, PageFrameAllocat
         exit(2);
     }
     // Set up first level page table
-    allocator.Allocate(256, mem); //????
+    allocator.Allocate(256, memory); //????
     // Set up PMCB. Pointing to beginning of page table
     //mem.set_PMCB();
 }
@@ -48,15 +48,22 @@ void ProcessTrace::Execute() {
             while (iss >> tempWord) { // Look at the first word of the line
                 uint32_t address;
                 try { // try catch to find exceptions
-                    iss >> std::hex >> address;
                     if (tempWord == "alloc") {
                         uint32_t vaddr, size, paddr;
-                        vaddr = address;
+                        iss >> std::hex >> vaddr;
                         iss >> std::hex >> size;
-                        numPages = size;
+                        
                         // allocate memory somehow
-                        memory.ToPhysical(vaddr, paddr, true);
-                        memory.put_bytes(paddr, size, 0); // New allocated memory is initialized to 0
+                        mem::MMU mem(size); // Create next-level page table
+                        PageFrameAllocator newAllocation(mem);
+                        newAllocation.Allocate(size, mem);
+                        
+                        mem::PMCB testPMCB;
+                        memory.get_PMCB(testPMCB);
+                        testPMCB.vm_enable = false;
+                        memory.ToPhysical(vaddr, paddr, true); // pages marked writable
+                        // Sometimes PhysicalMemoryBoundsException, sometimes Segmentation Fault
+                        mem.put_bytes(vaddr, size, 0); // New allocated memory is initialized to 0
                     } else if (tempWord == "compare") {
                         uint32_t addr, expected_values;
                         addr = address;
@@ -71,7 +78,7 @@ void ProcessTrace::Execute() {
                     } else if (tempWord == "put") {
                         uint32_t addr, val;
                         uint8_t data[1];
-                        addr = address;
+                        iss >> std::hex >> addr;
                         while (iss >> val) {
                             data[0] = val; // Puts value into an array of size 1 and then that array is put into the specified address
                             memory.put_byte(addr, data); // Uses MMU.h file to store bytes
@@ -79,7 +86,7 @@ void ProcessTrace::Execute() {
                         }
                     } else if (tempWord == "fill") {
                         uint32_t addr, count, val;
-                        addr = address; // First three values are the address, the amount of numbers to put, and the value to be put in
+                        iss >> std::hex >> addr; // First three values are the address, the amount of numbers to put, and the value to be put in
                         iss >> std::hex >> count;
                         iss >> std::hex >> val;
                         uint8_t data[1];
@@ -90,7 +97,7 @@ void ProcessTrace::Execute() {
                         }
                     } else if (tempWord == "copy") {
                         uint32_t dest_addr, src_addr, count;
-                        dest_addr = address; // First three values are the destination address, the source address, and the amount of numbers to copy
+                        iss >> std::hex >> dest_addr; // First three values are the destination address, the source address, and the amount of numbers to copy
                         iss >> std::hex >> src_addr;
                         iss >> std::hex >> count;
                         uint8_t data[1];
@@ -102,7 +109,7 @@ void ProcessTrace::Execute() {
                         }
                     } else if (tempWord == "dump") {
                         uint32_t addr, count;
-                        addr = address; // First two values are the address and the amount to dump
+                        iss >> std::hex >> addr; // First two values are the address and the amount to dump
                         iss >> std::hex >> count;
                         cout << addr << endl;
                         int i = 0;
@@ -118,33 +125,35 @@ void ProcessTrace::Execute() {
                             cout << endl;
                     } else if (tempWord == "writable") {
                         uint32_t vaddr, size, status;
-                        vaddr = address;
+                        iss >> std::hex >> vaddr;
                         iss >> std::hex >> size;
                         iss >> std::hex >> status;
-                        if (status == 0) {
-                            for (int i = 0; i < size; i++) {
-                                // Writable bit in the 2nd level page table should be cleared for all Present pages in the range
-                            }
-                        } else {
-                            for (int i = 0; i < size; i++) {
-                                // Writable bit in the 2nd level page table should be set for all Present pages in the range
-                            }
+                        for (int i = 0; i < size; i++) {
+                            // Writable bit in the 2nd level page table should be cleared for all Present pages in the range
+                            mem::MMU mem(size);
+                            mem::Addr paddr;
+                            if (status == 0)
+                                mem.ToPhysical(vaddr, paddr, false);
+                            else // status == 1
+                                mem.ToPhysical(vaddr, paddr, true);
                         }
                     }
                 } catch (mem::PageFaultException e1) {
-                    cout << "Exception: PageFaultException at " << address << endl;
+                    mem::PMCB tempPMCB;
+                    memory.get_PMCB(tempPMCB);
+                    tempPMCB.operation_state = mem::PMCB::NONE;
+                    cout << "Exception: PageFaultException at " << tempPMCB.next_vaddress << endl;
                     cout << "what() message: " << e1.what() << endl;
-                    mem::PMCB tempPMCB;
-                    memory.get_PMCB(tempPMCB);
-                    tempPMCB.operation_state = mem::PMCB::NONE;
                     memory.set_PMCB(tempPMCB);
+                    memory.FlushTLB();
                 } catch (mem::WritePermissionFaultException e2) {
-                    cout << "Exception: WritePermissionFaultException at " << address << endl;
-                    cout << "what() message: " << e2.what() << endl;
                     mem::PMCB tempPMCB;
                     memory.get_PMCB(tempPMCB);
+                    cout << "Exception: WritePermissionFaultException at " << tempPMCB.next_vaddress << endl;
+                    cout << "what() message: " << e2.what() << endl;
                     tempPMCB.operation_state = mem::PMCB::NONE;
                     memory.set_PMCB(tempPMCB);
+                    memory.FlushTLB();
                 }
             }
         }
